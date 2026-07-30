@@ -6,7 +6,7 @@
     <title>📚 体检知识刷题 · 多模式</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* ===== 全局样式 ===== */
+        /* ===== 全局样式（与您提供的一致，未作改动） ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
         body { background: linear-gradient(145deg, #f7f9fc 0%, #eef2f7 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 1.5rem; }
         .card { max-width: 880px; width: 100%; background: rgba(255,255,255,0.75); backdrop-filter: blur(12px); border-radius: 48px; padding: 2rem; box-shadow: 0 20px 40px rgba(0,20,40,0.12); border: 1px solid rgba(255,255,255,0.6); }
@@ -29,29 +29,11 @@
         .user-input { width: 100%; padding: 0.7rem 1.2rem; border-radius: 40px; border: 1px solid #c6d8ed; font-size: 1rem; background: white; transition: 0.2s; resize: vertical; }
         .user-input:focus { border-color: #3a7bc8; box-shadow: 0 0 0 3px rgba(58,123,200,0.15); outline: none; }
         .choice-group { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 6px; }
-        .choice-group label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 1rem;
-            background: white;
-            padding: 0.3rem 1rem 0.3rem 0.8rem;
-            border-radius: 40px;
-            border: 1px solid #dce5f0;
-            cursor: pointer;
-            transition: background 0.2s, border-color 0.2s;
-        }
+        .choice-group label { display: flex; align-items: center; gap: 6px; font-size: 1rem; background: white; padding: 0.3rem 1rem 0.3rem 0.8rem; border-radius: 40px; border: 1px solid #dce5f0; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
         .choice-group label:hover { background: #eef5fd; }
         .choice-group input[type="radio"] { accent-color: #1a4d7a; width: 16px; height: 16px; }
-        /* 正确/错误反馈样式 */
-        .choice-group label.correct {
-            background: #d4edda !important;
-            border-color: #28a745 !important;
-        }
-        .choice-group label.incorrect {
-            background: #f8d7da !important;
-            border-color: #dc3545 !important;
-        }
+        .choice-group label.correct { background: #d4edda !important; border-color: #28a745 !important; }
+        .choice-group label.incorrect { background: #f8d7da !important; border-color: #dc3545 !important; }
         .correct-answer { background: #e7f3e7; border-left: 6px solid #2a8e5c; padding: 0.8rem 1.5rem; border-radius: 16px; margin-top: 0.8rem; font-weight: 500; color: #0a3d2a; display: none; }
         .correct-answer.show { display: block; }
         .action-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
@@ -119,7 +101,7 @@
 
     <div class="question-box">
         <div class="question-label"><span>❓ 问题</span></div>
-        <div class="question-text" id="questionText">请上传 Excel 题库</div>
+        <div class="question-text" id="questionText">正在加载题库...</div>
     </div>
 
     <div class="answer-area">
@@ -156,6 +138,7 @@
             </div>
             <div class="upload-actions">
                 <button class="btn btn-primary btn-sm" id="uploadBtn">⬆️ 上传</button>
+                <button class="btn btn-outline btn-sm" id="exportBtn" style="margin-left:8px;">📥 导出 JSON</button>
                 <span class="upload-status" id="uploadStatus"></span>
             </div>
         </div>
@@ -171,6 +154,8 @@
         // ============================================================
         const UPLOAD_PASSWORD = 'admin123';
         const STORAGE_KEY = 'examQuestionBank';
+        // ✅ 指向你刚刚上传的 JSON 文件
+        const QUESTIONS_JSON_URL = 'https://leslielay-123.github.io/leslie/questions.json';
 
         // ============================================================
         //  全局状态
@@ -201,6 +186,7 @@
         const uploadPassword = document.getElementById('uploadPassword');
         const fileInput = document.getElementById('fileInput');
         const uploadBtn = document.getElementById('uploadBtn');
+        const exportBtn = document.getElementById('exportBtn');
         const uploadStatus = document.getElementById('uploadStatus');
 
         // ============================================================
@@ -249,7 +235,7 @@
         }
 
         // ============================================================
-        //  本地存储
+        //  本地存储 (备用)
         // ============================================================
         function saveToLocalStorage(questions) {
             try {
@@ -275,7 +261,7 @@
         }
 
         // ============================================================
-        //  解析 Excel（支持合并单元格分类）
+        //  解析 Excel（上传功能使用）
         // ============================================================
         function parseExcelToQuestions(worksheet) {
             const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
@@ -344,7 +330,6 @@
             const priceQuestions = [];
             const categoryQuestions = [];
 
-            // 意义题
             items.forEach((it) => {
                 meaningQuestions.push({
                     type: 'meaning',
@@ -354,7 +339,6 @@
                 });
             });
 
-            // 价格题
             items.forEach((it) => {
                 if (it.priceMale !== null) {
                     const correct = it.priceMale;
@@ -397,7 +381,6 @@
                 }
             });
 
-            // 分类项目题
             for (const [category, itemsList] of Object.entries(categoryMap)) {
                 if (itemsList.length === 0) continue;
                 const answer = itemsList.join('、');
@@ -410,6 +393,41 @@
             }
 
             return [...meaningQuestions, ...priceQuestions, ...categoryQuestions];
+        }
+
+        // ============================================================
+        //  核心：加载题库
+        // ============================================================
+        function loadQuestionBank(questions, source = '本地存储') {
+            allQuestions = questions || [];
+            if (allQuestions.length > 0) {
+                localBadge.style.display = 'inline';
+                localBadge.textContent = `📁 ${source} (${allQuestions.length} 题)`;
+                uploadStatus.textContent = `✅ 已加载 ${source}，共 ${allQuestions.length} 道题`;
+                uploadStatus.className = 'upload-status';
+            } else {
+                localBadge.style.display = 'none';
+                uploadStatus.textContent = '⚠️ 题库为空，请上传 Excel';
+                uploadStatus.className = 'upload-status error';
+            }
+            // 刷新当前模式
+            const mode = modeSelect.value;
+            let filtered = [];
+            if (mode === 'random') {
+                filtered = [...allQuestions];
+            } else if (mode === 'meaning') {
+                filtered = allQuestions.filter(q => q.type === 'meaning');
+            } else if (mode === 'price') {
+                filtered = allQuestions.filter(q => q.type === 'price');
+            } else if (mode === 'category') {
+                filtered = allQuestions.filter(q => q.type === 'category');
+            }
+            shuffle(filtered);
+            currentQuestions = filtered;
+            total = currentQuestions.length;
+            currentIndex = 0;
+            questionCountDisplay.textContent = total;
+            renderCurrent(false);
         }
 
         // ============================================================
@@ -457,7 +475,7 @@
                 if (q.options && q.options.length > 0) {
                     const group = document.createElement('div');
                     group.className = 'choice-group';
-                    const correctAnswer = q.answer; // 字符串，如 "210.00"
+                    const correctAnswer = q.answer;
 
                     q.options.forEach((opt) => {
                         const label = document.createElement('label');
@@ -469,14 +487,11 @@
                         label.appendChild(document.createTextNode(' ¥' + opt));
                         group.appendChild(label);
 
-                        // 点击选项时的实时反馈
                         radio.addEventListener('change', function() {
-                            // 清除同组其他选项的样式
                             const allLabels = group.querySelectorAll('label');
                             allLabels.forEach(lb => {
                                 lb.classList.remove('correct', 'incorrect');
                             });
-                            // 判断当前选中的值是否正确
                             if (this.value === correctAnswer) {
                                 label.classList.add('correct');
                             } else {
@@ -486,7 +501,6 @@
                     });
                     answerInputContainer.appendChild(group);
                 } else {
-                    // 保底：填空（通常不会触发）
                     const input = document.createElement('input');
                     input.className = 'user-input';
                     input.type = 'text';
@@ -509,9 +523,6 @@
             answerVisible = showAnswer;
         }
 
-        // ============================================================
-        //  模式切换
-        // ============================================================
         function loadMode(mode) {
             if (!allQuestions.length) {
                 currentQuestions = [];
@@ -538,18 +549,8 @@
             renderCurrent(false);
         }
 
-        function loadQuestionBank(questions) {
-            allQuestions = questions;
-            if (allQuestions.length > 0) {
-                localBadge.style.display = 'inline';
-            } else {
-                localBadge.style.display = 'none';
-            }
-            loadMode(modeSelect.value);
-        }
-
         // ============================================================
-        //  上传处理
+        //  上传处理（保留，用于管理员更新）
         // ============================================================
         function handleUpload() {
             const pwd = uploadPassword.value.trim();
@@ -579,7 +580,7 @@
                         } else throw new Error('未找到工作表');
                     }
                     const parsedQuestions = parseExcelToQuestions(worksheet);
-                    loadQuestionBank(parsedQuestions);
+                    loadQuestionBank(parsedQuestions, '手动上传');
                     saveToLocalStorage(parsedQuestions);
                     uploadStatus.textContent = `✅ 成功！共 ${parsedQuestions.length} 道题 (工作表: ${sheetName})，已保存本地`;
                     uploadStatus.className = 'upload-status';
@@ -598,19 +599,68 @@
         }
 
         // ============================================================
-        //  初始化
+        //  导出 JSON
+        // ============================================================
+        function handleExport() {
+            if (!allQuestions || allQuestions.length === 0) {
+                uploadStatus.textContent = '⚠️ 当前没有题库数据可导出，请先上传 Excel';
+                uploadStatus.className = 'upload-status error';
+                return;
+            }
+
+            const jsonStr = JSON.stringify(allQuestions, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'questions.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            uploadStatus.textContent = `✅ 已导出 ${allQuestions.length} 道题到 questions.json`;
+            uploadStatus.className = 'upload-status';
+        }
+
+        // ============================================================
+        //  初始化：优先加载外部 JSON
         // ============================================================
         function init() {
-            const stored = loadFromLocalStorage();
-            if (stored && stored.length > 0) {
-                loadQuestionBank(stored);
-                uploadStatus.textContent = `📁 已加载本地题库 (${stored.length} 道题)`;
-                uploadStatus.className = 'upload-status';
-            } else {
-                loadQuestionBank([]);
-                uploadStatus.textContent = '请上传 Excel 题库';
-                uploadStatus.className = 'upload-status';
-            }
+            questionText.textContent = '正在从云端加载题库...';
+            statusBadge.textContent = '⏳ 加载中...';
+
+            // 1. 尝试从外部 JSON 加载
+            fetch(QUESTIONS_JSON_URL)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        loadQuestionBank(data, '云端题库');
+                        // 同时缓存到 localStorage，以备离线使用
+                        saveToLocalStorage(data);
+                    } else {
+                        throw new Error('云端数据为空');
+                    }
+                })
+                .catch(err => {
+                    console.warn('从云端加载题库失败:', err);
+                    // 2. 云端失败，尝试从本地存储加载
+                    const stored = loadFromLocalStorage();
+                    if (stored && stored.length > 0) {
+                        loadQuestionBank(stored, '本地缓存');
+                    } else {
+                        // 3. 本地也无数据，显示空状态
+                        loadQuestionBank([]);
+                        questionText.textContent = '请上传 Excel 题库';
+                        uploadStatus.textContent = '⚠️ 未找到题库，请手动上传';
+                        uploadStatus.className = 'upload-status error';
+                    }
+                });
         }
 
         // ============================================================
@@ -656,6 +706,10 @@
             e.preventDefault();
             handleUpload();
         });
+        exportBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            handleExport();
+        });
 
         document.addEventListener('keydown', function(e) {
             if (e.key === 'ArrowLeft') { e.preventDefault(); prevBtn.click(); }
@@ -668,7 +722,7 @@
         //  启动
         // ============================================================
         init();
-        console.log('📘 体检刷题已启动！价格训练点击选项实时反馈（正确绿/错误红）。密码：' + UPLOAD_PASSWORD);
+        console.log('📘 体检刷题已启动！优先从云端加载题库。密码：' + UPLOAD_PASSWORD);
     })();
 </script>
 </body>
