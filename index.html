@@ -152,8 +152,8 @@
         // ============================================================
         //  配置
         // ============================================================
-        const UPLOAD_PASSWORD = 'admin123';          // 上传密码（保留）
-        const ADMIN_PANEL_PASSWORD = 'MN100';        // 管理面板解锁密码（新增）
+        const UPLOAD_PASSWORD = 'admin123';
+        const ADMIN_PANEL_PASSWORD = 'MN100';
         const STORAGE_KEY = 'examQuestionBank';
         const QUESTIONS_JSON_URL = 'https://leslielay-123.github.io/leslie/questions.json';
 
@@ -462,6 +462,7 @@
                 nextBtn.textContent = '下一题 ▶';
             }
 
+            // 重建作答区域（切换题目时清空之前的输入）
             answerInputContainer.innerHTML = '';
             if (q.type === 'meaning' || q.type === 'category') {
                 const textarea = document.createElement('textarea');
@@ -509,7 +510,9 @@
                 }
             }
 
+            // 设置正确答案文本
             correctAnswerText.textContent = q.answer;
+            // 根据 showAnswer 控制显示
             if (showAnswer) {
                 correctAnswerBox.classList.add('show');
                 statusBadge.textContent = '📖 已显示答案';
@@ -676,14 +679,33 @@
                 currentIndex++;
                 renderCurrent(false);
             } else {
-                renderCurrent(true);
+                // 最后一题点击下一题显示答案（保留输入框）W
+                // 直接调用 renderCurrent 会重建输入框，所以我们需要特殊处理H
+                // 为了不丢失输入，这里只切换答案显示状态N
+                if (!answerVisible) {
+                    // 显示答案
+                    answerVisible = true;
+                    correctAnswerBox.classList.add('show');
+                    statusBadge.textContent = '📖 已显示答案';
+                    toggleAnswerBtn.textContent = '🙈 隐藏答案';
+                }
             }
         });
 
+        // 🔄 显示/隐藏答案（关键修改：不重建输入区域）B
         toggleAnswerBtn.addEventListener('click', function() {
             if (total === 0) return;
-            const newState = !answerVisible;
-            renderCurrent(newState);
+            // 切换答案显示状态
+            answerVisible = !answerVisible;
+            if (answerVisible) {
+                correctAnswerBox.classList.add('show');
+                statusBadge.textContent = '📖 已显示答案';
+                toggleAnswerBtn.textContent = '🙈 隐藏答案';
+            } else {
+                correctAnswerBox.classList.remove('show');
+                statusBadge.textContent = '⏳ 待作答';
+                toggleAnswerBtn.textContent = '📖 显示答案';
+            }
         });
 
         resetBtn.addEventListener('click', function() {
@@ -693,35 +715,23 @@
             renderCurrent(false);
         });
 
-        // 🔐 管理面板点击事件（新增密码验证）
+        // 管理面板密码
         toggleManageBtn.addEventListener('click', function() {
-            // 如果面板已展开，直接收起（无需密码）
             if (uploadArea.classList.contains('open')) {
                 uploadArea.classList.remove('open');
                 toggleManageBtn.textContent = '📂 管理题库 (上传 Excel)';
                 return;
             }
-
-            // 面板未展开，要求输入密码
             const pwd = prompt('请输入管理面板密码：');
-            if (pwd === null) {
-                // 用户点击了取消
-                return;
-            }
+            if (pwd === null) return;
             if (pwd === ADMIN_PANEL_PASSWORD) {
-                // 密码正确，展开面板
                 uploadArea.classList.add('open');
                 toggleManageBtn.textContent = '🔽 收起';
-                // 清空之前的状态信息（可选）
                 uploadStatus.textContent = '';
                 uploadStatus.className = 'upload-status';
             } else {
-                // 密码错误
                 uploadStatus.textContent = '❌ 管理密码错误，请重试';
                 uploadStatus.className = 'upload-status error';
-                // 保持面板关闭
-                // 可以使用 alert 或仅显示错误信息，这里用 uploadStatus 显示
-                // 3秒后自动清除错误提示（可选）
                 setTimeout(() => {
                     if (uploadStatus.textContent === '❌ 管理密码错误，请重试') {
                         uploadStatus.textContent = '';
