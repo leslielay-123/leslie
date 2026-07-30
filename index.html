@@ -152,9 +152,9 @@
         // ============================================================
         //  配置
         // ============================================================
-        const UPLOAD_PASSWORD = 'admin123';
+        const UPLOAD_PASSWORD = 'admin123';          // 上传密码（保留）
+        const ADMIN_PANEL_PASSWORD = 'MN100';        // 管理面板解锁密码（新增）
         const STORAGE_KEY = 'examQuestionBank';
-        // ✅ 指向你刚刚上传的 JSON 文件
         const QUESTIONS_JSON_URL = 'https://leslielay-123.github.io/leslie/questions.json';
 
         // ============================================================
@@ -190,7 +190,7 @@
         const uploadStatus = document.getElementById('uploadStatus');
 
         // ============================================================
-        //  工具函数
+        //  工具函数（与之前完全一致）
         // ============================================================
         function shuffle(arr) {
             for (let i = arr.length - 1; i > 0; i--) {
@@ -235,7 +235,7 @@
         }
 
         // ============================================================
-        //  本地存储 (备用)
+        //  本地存储
         // ============================================================
         function saveToLocalStorage(questions) {
             try {
@@ -261,7 +261,7 @@
         }
 
         // ============================================================
-        //  解析 Excel（上传功能使用）
+        //  解析 Excel
         // ============================================================
         function parseExcelToQuestions(worksheet) {
             const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
@@ -396,7 +396,7 @@
         }
 
         // ============================================================
-        //  核心：加载题库
+        //  加载题库
         // ============================================================
         function loadQuestionBank(questions, source = '本地存储') {
             allQuestions = questions || [];
@@ -410,7 +410,6 @@
                 uploadStatus.textContent = '⚠️ 题库为空，请上传 Excel';
                 uploadStatus.className = 'upload-status error';
             }
-            // 刷新当前模式
             const mode = modeSelect.value;
             let filtered = [];
             if (mode === 'random') {
@@ -550,7 +549,7 @@
         }
 
         // ============================================================
-        //  上传处理（保留，用于管理员更新）
+        //  上传处理
         // ============================================================
         function handleUpload() {
             const pwd = uploadPassword.value.trim();
@@ -624,13 +623,12 @@
         }
 
         // ============================================================
-        //  初始化：优先加载外部 JSON
+        //  初始化
         // ============================================================
         function init() {
             questionText.textContent = '正在从云端加载题库...';
             statusBadge.textContent = '⏳ 加载中...';
 
-            // 1. 尝试从外部 JSON 加载
             fetch(QUESTIONS_JSON_URL)
                 .then(response => {
                     if (!response.ok) {
@@ -641,7 +639,6 @@
                 .then(data => {
                     if (Array.isArray(data) && data.length > 0) {
                         loadQuestionBank(data, '云端题库');
-                        // 同时缓存到 localStorage，以备离线使用
                         saveToLocalStorage(data);
                     } else {
                         throw new Error('云端数据为空');
@@ -649,12 +646,10 @@
                 })
                 .catch(err => {
                     console.warn('从云端加载题库失败:', err);
-                    // 2. 云端失败，尝试从本地存储加载
                     const stored = loadFromLocalStorage();
                     if (stored && stored.length > 0) {
                         loadQuestionBank(stored, '本地缓存');
                     } else {
-                        // 3. 本地也无数据，显示空状态
                         loadQuestionBank([]);
                         questionText.textContent = '请上传 Excel 题库';
                         uploadStatus.textContent = '⚠️ 未找到题库，请手动上传';
@@ -698,10 +693,44 @@
             renderCurrent(false);
         });
 
+        // 🔐 管理面板点击事件（新增密码验证）
         toggleManageBtn.addEventListener('click', function() {
-            uploadArea.classList.toggle('open');
-            toggleManageBtn.textContent = uploadArea.classList.contains('open') ? '🔽 收起' : '📂 管理题库 (上传 Excel)';
+            // 如果面板已展开，直接收起（无需密码）
+            if (uploadArea.classList.contains('open')) {
+                uploadArea.classList.remove('open');
+                toggleManageBtn.textContent = '📂 管理题库 (上传 Excel)';
+                return;
+            }
+
+            // 面板未展开，要求输入密码
+            const pwd = prompt('请输入管理面板密码：');
+            if (pwd === null) {
+                // 用户点击了取消
+                return;
+            }
+            if (pwd === ADMIN_PANEL_PASSWORD) {
+                // 密码正确，展开面板
+                uploadArea.classList.add('open');
+                toggleManageBtn.textContent = '🔽 收起';
+                // 清空之前的状态信息（可选）
+                uploadStatus.textContent = '';
+                uploadStatus.className = 'upload-status';
+            } else {
+                // 密码错误
+                uploadStatus.textContent = '❌ 管理密码错误，请重试';
+                uploadStatus.className = 'upload-status error';
+                // 保持面板关闭
+                // 可以使用 alert 或仅显示错误信息，这里用 uploadStatus 显示
+                // 3秒后自动清除错误提示（可选）
+                setTimeout(() => {
+                    if (uploadStatus.textContent === '❌ 管理密码错误，请重试') {
+                        uploadStatus.textContent = '';
+                        uploadStatus.className = 'upload-status';
+                    }
+                }, 3000);
+            }
         });
+
         uploadBtn.addEventListener('click', function(e) {
             e.preventDefault();
             handleUpload();
@@ -722,7 +751,7 @@
         //  启动
         // ============================================================
         init();
-        console.log('📘 体检刷题已启动！优先从云端加载题库。密码：' + UPLOAD_PASSWORD);
+        console.log('📘 体检刷题已启动！管理面板密码：' + ADMIN_PANEL_PASSWORD);
     })();
 </script>
 </body>
