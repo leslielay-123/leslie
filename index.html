@@ -195,7 +195,7 @@
             return arr;
         }
 
-        // 🔥 核心修复：安全提取价格，移除所有非数字字符
+        // 安全提取价格（支持 ¥ 符号）
         function safeParsePrice(value) {
             if (value === undefined || value === null || value === '') return null;
             const cleaned = String(value).replace(/[^0-9.\-]/g, '');
@@ -205,7 +205,7 @@
             return num;
         }
 
-        // 生成价格选项：正确价格上下浮动，产生4个不同数字（含正确价格）
+        // 生成价格选项
         function generatePriceOptions(correctPrice) {
             const candidates = new Set();
             candidates.add(correctPrice);
@@ -258,7 +258,7 @@
         }
 
         // ============================================================
-        //  解析 Excel 生成题库
+        //  解析 Excel 生成题库（关键修复：处理合并单元格）
         // ============================================================
         function parseExcelToQuestions(worksheet) {
             const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
@@ -283,40 +283,60 @@
                 throw new Error('未找到必要的列：分类、体检项目、临床意义');
             }
 
-            const items = [];
+            // 用于分类项目映射（独立于意义）
             const categoryMap = {};
+            // 用于意义题和价格题（需要意义非空）
+            const items = [];
+
+            let currentCategory = ''; // 用于继承合并单元格的分类
 
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i];
                 if (!row || row.length === 0) continue;
-                const category = String(row[colCategory] || '').trim();
+
+                // 获取分类，若为空则沿用上一个非空分类
+                let category = String(row[colCategory] || '').trim();
+                if (category) {
+                    currentCategory = category;
+                } else {
+                    category = currentCategory;
+                }
+
                 const item = String(row[colItem] || '').trim();
+                if (!item) continue; // 项目名为空则跳过
+
+                // 无论意义是否存在，都将项目加入分类映射
+                if (!categoryMap[category]) categoryMap[category] = [];
+                if (!categoryMap[category].includes(item)) categoryMap[category].push(item);
+
+                // 提取意义（用于意义题和价格题）
                 const meaning = String(row[colMeaning] || '').trim();
-                if (!item || !meaning) continue;
+                if (!meaning) continue; // 意义为空则不生成意义题和价格题
 
                 let detail = '';
                 if (colDetail !== -1) {
                     detail = String(row[colDetail] || '').trim();
                 }
 
-                // 🔥 使用 safeParsePrice 替代直接 parseFloat
                 const priceMale = safeParsePrice(row[colPriceMale]);
                 const priceFemaleUnmarried = safeParsePrice(row[colPriceFemaleUnmarried]);
                 const priceFemaleMarried = safeParsePrice(row[colPriceFemaleMarried]);
 
                 items.push({ category, item, meaning, detail, priceMale, priceFemaleUnmarried, priceFemaleMarried });
-
-                if (!categoryMap[category]) categoryMap[category] = [];
-                if (!categoryMap[category].includes(item)) categoryMap[category].push(item);
             }
 
-            if (items.length === 0) throw new Error('未能解析出任何有效项目');
+            if (items.length === 0 && Object.keys(categoryMap).length === 0) {
+                throw new Error('未能解析出任何有效项目');
+            }
+
+            // 调试：在控制台输出分类映射，方便检查
+            console.log('📊 分类映射:', categoryMap);
 
             const meaningQuestions = [];
             const priceQuestions = [];
             const categoryQuestions = [];
 
-            // 1. 意义题
+            // 1. 意义题（基于 items）
             items.forEach((it) => {
                 meaningQuestions.push({
                     type: 'meaning',
@@ -326,7 +346,7 @@
                 });
             });
 
-            // 2. 价格题（只要有价格就生成，包括 0）
+            // 2. 价格题（基于 items，且价格存在）
             items.forEach((it) => {
                 if (it.priceMale !== null) {
                     const correct = it.priceMale;
@@ -369,7 +389,7 @@
                 }
             });
 
-            // 3. 分类项目题
+            // 3. 分类项目题（基于 categoryMap，包含所有项目）
             for (const [category, itemsList] of Object.entries(categoryMap)) {
                 if (itemsList.length === 0) continue;
                 const answer = itemsList.join('、');
@@ -386,7 +406,7 @@
         }
 
         // ============================================================
-        //  渲染与模式切换
+        //  渲染与模式切换（与之前一致）
         // ============================================================
         function renderCurrent(showAnswer = false) {
             if (total === 0 || currentIndex < 0 || currentIndex >= total) {
@@ -620,6 +640,8 @@
         //  启动
         // ============================================================
         init();
-        console.log('📘 体检刷题已启动！价格解析已支持 ¥ 符号。密码：' + UPLOAD_PASSWORD);
+        console.log('📘 体检刷题已启动！已支持合并单元格的分类。密码：' + UPLOAD_PASSWORD);
     })();
 </script>
+</body>
+</html>
